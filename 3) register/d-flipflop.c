@@ -7,7 +7,6 @@ unsigned int NOR(unsigned int param1, unsigned int param2) {
 }
 
 /* ---------- SR Latch ----------- */
-
 typedef struct {
   int Q;
   int Qn;
@@ -33,7 +32,6 @@ void srlatch_update(Latch *latch, int S, int R) { // * used in declaration means
 
 
 /* ---------- D Latch ----------- */
-
 void dlatch_update(Latch *latch, int D, int E) { // D = data, E = enable
   unsigned int q = latch->Q;
   unsigned int qn = latch->Qn;
