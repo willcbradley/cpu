@@ -58,28 +58,32 @@ void print_state(const char *label, Latch *latch) { // C has no strings; declare
 
 /* ---------- D Flipflop ----------- */
 // define clock global variable first so that clock_tick function definition compiles correctly
-unsigned int clock = 0;
+// clock idles at one to enable falling edge first (update master) then rising ege (update slave)
+unsigned int clock = 1;
 
 void clock_tick(void) {
   clock = NOT(clock);
 }
 
-void dflipflop_update(Latch *flipflop, Latch *master, Latch *slave, unsigned int clock, unsigned int D) { // flipflop has same members -> same typedef
-  // flipflop only updates on clock tick
-  clock_tick();
+void dflipflop_update(Latch *flipflop, Latch *master, Latch *slave, unsigned int D) { // flipflop has same members -> same typedef
   // define function scope variables
   unsigned int q = flipflop->Q;
   unsigned int qn = flipflop->Qn;
-  // compute master latch output
-  dlatch_update(master, D, NOT(clock));
-  // compute slave latch output; Q from master becomes D for slave, and two NOT gates cancel on clock input
-  dlatch_update(slave, master->Q, clock);
+
+  clock_tick(); // falling edge
+  dlatch_update(master, D, NOT(clock)); // compute master latch output
+  
+  clock_tick(); // rising edge
+  dlatch_update(slave, master->Q, clock); // compute slave latch output
+
   // compute new flipflop outputs
   unsigned int newQ = slave->Q;
   unsigned int newQn = slave->Qn;
+
   // redefine function-scope variables
   q = newQ;
   qn = newQn;
+
   // update flipflop outputs at struct level
   flipflop->Q = q;
   flipflop-> Qn = qn;
@@ -91,25 +95,11 @@ int main() {
   Latch master = {0, 1};
   Latch slave = {1, 0};
 
-  printf("Clock: %d\n", clock);
-  dflipflop_update(&flipflop, &master, &slave, clock, 1); // clock 0 -> 1
-  print_state("Input D = 1 on clock uptick", &flipflop);
-  printf("Clock: %d\n", clock);
+  dflipflop_update(&flipflop, &master, &slave, 1); // clock 0 -> 1
+  print_state("Input D = 1", &flipflop);
 
-  dflipflop_update(&flipflop, &master, &slave, clock, 0); // clock 1 -> 0
-  print_state("Input D = 0 on clock downtick", &flipflop);
-  printf("Clock: %d\n", clock);
-
-  dflipflop_update(&flipflop, &master, &slave, clock, 0); // clock 0 -> 1
-  print_state("Input D = 0 on clock uptick", &flipflop);
-  printf("Clock: %d\n", clock);
-
-  dflipflop_update(&flipflop, &master, &slave, clock, 1); // clock 1 -> 0
-  print_state("Input D = 1 on clock downtick", &flipflop);
-  printf("Clock: %d\n", clock);
+  dflipflop_update(&flipflop, &master, &slave, 0); // clock 1 -> 0
+  print_state("Input D = 0", &flipflop);
 
   return 0;
 }
-
-
-// this is broken for some reason -> Q doesn't revert to 0 on second uptick, but rather second downtick (!!!)
