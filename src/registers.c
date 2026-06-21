@@ -1,13 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
-#include "pastlogic.h"
+#include "gates.h"
 
-// create NOR gate from previous logic
-unsigned int NOR(unsigned int param1, unsigned int param2) {
-    return NOT(OR(param1, param2));
-}
-
-/* ---------- SR Latch ----------- */
 typedef struct {
   int Q;
   int Qn;
@@ -31,7 +25,6 @@ void srlatch_update(Latch *latch, int S, int R) { // * used in declaration means
   latch->Qn = qn;
 }
 
-/* ---------- D Latch ----------- */
 void dlatch_update(Latch *latch, int D, int E) { // D = data, E = enable
   unsigned int q = latch->Q;
   unsigned int qn = latch->Qn;
@@ -58,36 +51,19 @@ void print_state(const char *label, Latch *latch) { // C has no strings; declare
 }
 
 /* ---------- D Flipflop ----------- */
-// define clock global variable first so that clock_tick function definition compiles correctly
-// clock idles at one to enable falling edge first (update master) then rising ege (update slave)
-unsigned int clock = 1;
 
-void clock_tick(void) {
-  clock = NOT(clock);
+// IMPORTANT: all clock-sensitive functions assume main.c clock variable (defined within the main() function, rather than globally) idles at 1
+// They rely on a clock tick occuring BEFORE being called
+
+void dflipflop_update_falling(Latch *flipflop, Latch *master, unsigned int D, unsigned int clock) { // fliflop has same members -> same Latch typedef
+  dlatch_update(master, D, NOT(clock));
 }
 
-void dflipflop_update(Latch *flipflop, Latch *master, Latch *slave, unsigned int D) { // flipflop has same members -> same typedef
-  // define function scope variables
-  unsigned int q = flipflop->Q;
-  unsigned int qn = flipflop->Qn;
+void dflipflop_update_rising(Latch *flipflop, Latch *master, Latch *slave, unsigned int clock) {
+  dlatch_update(slave, master->Q, clock);
 
-  clock_tick(); // falling edge
-  dlatch_update(master, D, NOT(clock)); // compute master latch output
-  
-  clock_tick(); // rising edge
-  dlatch_update(slave, master->Q, clock); // compute slave latch output
-
-  // compute new flipflop outputs
-  unsigned int newQ = slave->Q;
-  unsigned int newQn = slave->Qn;
-
-  // redefine function-scope variables
-  q = newQ;
-  qn = newQn;
-
-  // update flipflop outputs at struct level
-  flipflop->Q = q;
-  flipflop-> Qn = qn;
+  flipflop->Q = slave->Q;
+  flipflop->Qn = slave->Qn;
 }
 
 /* ---------- 32-bit Register ----------- */
@@ -107,17 +83,18 @@ void register32_init(Register32 *reg) {
   }
 }
 
-void register32_update(Register32 *reg, uint32_t D) {
-  clock_tick(); // falling edge -> master latches updates
+void register32_update_falling(Register32 *reg, uint32_t D, unsigned int clock) { // falling edge -> master node updates
   for (int i = 0; i < 32; i++) {
-    unsigned int bit = (D >> i) & 1u; // right shift by i to access ith bit, compare to 00000001 to cancel all else, and determine 1/0 of bit of interest
-    dlatch_update(&reg->master[i], bit, NOT(clock));
+    unsigned int bit = (D >> i) & 1u;
+    dlatch_update (&reg->master[i], bit, NOT(clock));
   }
+}
 
-  clock_tick(); // rising edge -> update slave latches
+void register32_update_rising(Register32 *reg, unsigned int clock) { // rising edge -> slave node (and therefore overarching register) updates
   for (int i = 0; i < 32; i++) {
+    // output (Q) of master becomes input to slave
     dlatch_update(&reg->slave[i], reg->master[i].Q, clock);
-    // output of slave latch becomes output of flipflop
+    // output of slave becomes new register values
     reg->flipflop[i].Q = reg->slave[i].Q;
     reg->flipflop[i].Qn = reg->slave[i].Qn;
   }
@@ -131,22 +108,4 @@ uint32_t register32_read(Register32 *reg) {
     }
   }
   return value;
-}
-
-int main() {
-  Register32 reg;
-  register32_init(&reg);
-
-  printf("Initial:               0x%08X\n", register32_read(&reg)); // 0 means pad w/ zeros on left, 8 means 8-wide, X means hex
-  
-  register32_update(&reg, 0xDEADBEEF);
-  printf("After load 0xDEADBEEF: 0x%08X\n", register32_read(&reg));
-
-  register32_update(&reg, 0x00000000);
-  printf("After load 0x00000000: 0x%08X\n", register32_read(&reg));
-
-  register32_update(&reg, 0xCAFEF00D);
-  printf("After load 0xCAFEF00D: 0x%08X\n", register32_read(&reg));
-
-  return 0;
 }

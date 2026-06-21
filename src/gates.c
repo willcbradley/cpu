@@ -1,19 +1,24 @@
 #include <stdio.h>
+#include <stdint.h>
 
-int AND(int param1, int param2) {
+unsigned int AND(int param1, int param2) {
     return param1 * param2;
 }
 
-int OR(int param1, int param2) {
+unsigned int OR(int param1, int param2) {
     return param1 + param2 - param1 * param2;
 }
 
-int NOT(int value) {
+unsigned int NOT(int value) {
     return 1 - value;
 }
 
-int XOR(int param1, int param2) {
+unsigned int XOR(int param1, int param2) {
     return AND(OR(param1, param2), NOT(AND(param1, param2)));
+}
+
+unsigned int NOR(unsigned int param1, unsigned int param2) {
+    return NOT(OR(param1, param2));
 }
 
 void ANDTABLE() {
@@ -54,10 +59,12 @@ void XORTABLE() {
     printf("\n");
 }
 
-int main() {
-    NOTTABLE();
-    ANDTABLE();
-    ORTABLE();
-    XORTABLE();
-    return 0;
+void NORTABLE() {
+    printf("NOR truth table:\n");
+    for (int i = 0; i < 2; i++) {
+        for (int j = 0; j < 2; j++) {
+            printf("NOR(%d, %d) = %d\n", i, j, NOR(i, j));
+        }
+    }
+    printf("\n");
 }
