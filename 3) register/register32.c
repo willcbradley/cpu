@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdint.h>
 #include "pastlogic.h"
 
 // create NOR gate from previous logic
@@ -38,7 +39,7 @@ void dlatch_update(Latch *latch, int D, int E) { // D = data, E = enable
   unsigned int S = AND(D, E);
   unsigned int R = AND(NOT(D), E);
 
-  for (int i=0; i < 3; i++) {
+  for (int i = 0; i < 3; i++) {
     // compute new latch outputs
     unsigned int newQ = NOR(R, qn);
     unsigned int newQn = NOR(S, q);
@@ -89,17 +90,63 @@ void dflipflop_update(Latch *flipflop, Latch *master, Latch *slave, unsigned int
   flipflop-> Qn = qn;
 }
 
+/* ---------- D Flipflop ----------- */
+#define WIDTH 32
+
+typedef struct {
+  Latch master[WIDTH];
+  Latch slave[WIDTH];
+  Latch flipflop[WIDTH];
+} Register32;
+
+void register32_init(Register32 *reg) {
+  for (int i = 0; i < 32; i++) {
+    reg->master[i] = (Latch){0, 1};
+    reg->slave[i] = (Latch){0, 1};
+    reg->flipflop[i] = (Latch){0, 1};
+  }
+}
+
+void register32_update(Register32 *reg, uint32_t D) {
+  clock_tick(); // falling edge -> master latches updates
+  for (int i = 0; i < 32; i++) {
+    unsigned int bit = (D >> i) & 1u; // right shift by i to access ith bit, compare to 00000001 to cancel all else, and determine 1/0 of bit of interest
+    dlatch_update(&reg->master[i], bit, NOT(clock));
+  }
+
+  clock_tick(); // rising edge -> update slave latches
+  for (int i = 0; i < 32; i++) {
+    dlatch_update(&reg->slave[i], reg->master[i].Q, clock);
+    // output of slave latch becomes output of flipflop
+    reg->flipflop[i].Q = reg->slave[i].Q;
+    reg->flipflop[i].Qn = reg->slave[i].Qn;
+  }
+}
+
+uint32_t register32_read(Register32 *reg) {
+  uint32_t value = 0;
+  for (int i = 0; i < 32; i++) {
+    if (reg->flipflop[i].Q) {
+      value = value | (1u << i); // 1 or 0 is always 1, so this lets us set the i'th bit to 1 if Q = 1
+    }
+  }
+  return value;
+}
+
 int main() {
-  // initialise latch values to arbitrary values; in hardware, this is randomised
-  Latch flipflop = {0, 1};
-  Latch master = {0, 1};
-  Latch slave = {1, 0};
+  Register32 reg;
+  register32_init(&reg);
 
-  dflipflop_update(&flipflop, &master, &slave, 1); // clock 0 -> 1
-  print_state("Input D = 1", &flipflop);
+  printf("Initial:               0x%08X\n", register32_read(&reg)); // 0 means pad w/ zeros on left, 8 means 8-wide, X means hex
+  
+  register32_update(&reg, 0xDEADBEEF);
+  printf("After load 0xDEADBEEF: 0x%08X\n", register32_read(&reg));
 
-  dflipflop_update(&flipflop, &master, &slave, 0); // clock 1 -> 0
-  print_state("Input D = 0", &flipflop);
+  register32_update(&reg, 0x00000000);
+  printf("After load 0x00000000: 0x%08X\n", register32_read(&reg));
+
+  register32_update(&reg, 0xCAFEF00D);
+  printf("After load 0xCAFEF00D: 0x%08X\n", register32_read(&reg));
 
   return 0;
 }
