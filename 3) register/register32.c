@@ -90,7 +90,7 @@ void dflipflop_update(Latch *flipflop, Latch *master, Latch *slave, unsigned int
   flipflop-> Qn = qn;
 }
 
-/* ---------- D Flipflop ----------- */
+/* ---------- 32-bit Register ----------- */
 #define WIDTH 32
 
 typedef struct {
