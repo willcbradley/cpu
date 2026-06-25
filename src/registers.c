@@ -7,6 +7,7 @@ typedef struct {
   int Qn;
 } Latch;
 
+/* ---------- SR Latch ----------- */
 void srlatch_update(Latch *latch, int S, int R) { // * used in declaration means the value is a pointer (variable that stores memory address)
   unsigned int q = latch->Q; // Arrow operator acccesses struct member through pointer; since declaration above uses asterix "latch" is pointer
   unsigned int qn = latch->Qn;
@@ -25,6 +26,7 @@ void srlatch_update(Latch *latch, int S, int R) { // * used in declaration means
   latch->Qn = qn;
 }
 
+/* ---------- D Latch ----------- */
 void dlatch_update(Latch *latch, int D, int E) { // D = data, E = enable
   unsigned int q = latch->Q;
   unsigned int qn = latch->Qn;
