@@ -32,6 +32,8 @@ void register32_update_falling(Register32 *reg, uint32_t D, unsigned int clock);
 
 void register32_update_rising(Register32 *reg, unsigned int clock);
 
+void register32_update(Register32 *reg, uint32_t D);
+
 uint32_t register32_read(Register32 *reg);
 
 #endif

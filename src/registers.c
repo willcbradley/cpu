@@ -102,6 +102,12 @@ void register32_update_rising(Register32 *reg, unsigned int clock) { // rising e
   }
 }
 
+void register32_update(Register32 *reg, uint32_t D) {
+  // hardcode clock values to avoid half-cycle confusion and allow reg/PC etc to update sequentially without breaking
+  register32_update_falling(reg, D, 0);
+  register32_update_rising(reg, 1);
+}
+
 uint32_t register32_read(Register32 *reg) {
   uint32_t value = 0;
   for (int i = 0; i < 32; i++) {
