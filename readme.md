@@ -1,3 +1,3 @@
-Made a simple cpu emulator from ~scratch to (1) learn how they work, and (2) learn how to write C.  
+Made a gate-level CPU simulator from scratch to (1) learn how they work, and (2) learn how to write C.  
 
 [Will Bradley](https://willcbradley.com)
